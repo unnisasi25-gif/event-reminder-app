@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Reminder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12161c; --bg-soft:#181d25;
+    --events-panel:#2e2717; --events-accent:#c9a13b;
+    --functions-panel:#122e30; --functions-accent:#3fb6bd;
+    --text:#eae6da; --text-dim:#a7a493;
+    --danger:#c9523b; --card:#1c2129; --border:#2a303b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Poppins','Noto Sans Tamil',sans-serif; min-height:100vh;}
+  .tamil{font-family:'Noto Sans Tamil','Poppins',sans-serif;}
+  .screen{display:none; min-height:100vh; padding:14px 16px 60px;}
+  .screen.active{display:block;}
+
+  /* HOME */
+  #home{display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:18px;}
+  .logo-circle{
+    width:auto; height:auto;
+    display:flex; align-items:center; justify-content:center;
+    font-size:130px; margin-bottom:4px; line-height:1;
+  }
+  #home h1{font-size:24px; margin:0 0 2px;}
+  #home p.credit{font-size:12px; color:var(--text-dim); margin:0 0 14px;}
+  .home-buttons{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:16px;}
+  .home-btn{width:140px; padding:16px 8px; border-radius:14px; border:none; font-size:16px; font-weight:600; cursor:pointer; color:#fff;}
+  .home-btn.events{background:linear-gradient(160deg, var(--events-panel), #1c1810); border:1px solid var(--events-accent);}
+  .home-btn.functions{background:linear-gradient(160deg, var(--functions-panel), #0e2224); border:1px solid var(--functions-accent);}
+  .home-showall{width:100%; max-width:420px; margin-bottom:6px;}
+
+  .today-section{width:100%; max-width:420px; text-align:left;}
+  .today-section h3{font-size:14px; margin:10px 0 6px; color:var(--text-dim); font-weight:600;}
+
+  /* TOP BAR */
+  .topbar{display:flex; align-items:center; gap:12px; margin-bottom:14px;}
+  .back-btn{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:8px 14px; cursor:pointer; font-size:14px;}
+  .topbar h2{margin:0; font-size:19px;}
+
+  .panel-events{background:linear-gradient(180deg, var(--events-panel), var(--bg-soft) 260px); border-radius:18px; padding:16px; margin-bottom:16px;}
+  .panel-functions{background:linear-gradient(180deg, var(--functions-panel), var(--bg-soft) 260px); border-radius:18px; padding:16px; margin-bottom:16px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px;}
+  label{display:block; font-size:13px; color:var(--text-dim); margin:10px 0 4px;}
+  input[type=text], input[type=date], input[type=time], textarea, select{
+    width:100%; padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:#0f1319; color:var(--text); font-size:15px; font-family:inherit;
+  }
+  textarea{min-height:56px; resize:vertical;}
+  textarea.wide-field{min-height:64px; font-size:16px;}
+  .checkline{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px;}
+  .checkline input{width:auto;}
+  .btn{padding:11px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:14px; color:#fff;}
+  .btn-events{background:var(--events-accent); color:#1c1810;}
+  .btn-functions{background:var(--functions-accent); color:#0e2224;}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text);}
+  .btn-danger{background:var(--danger);}
+  .btn-sm{padding:7px 10px; font-size:12px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+  .list-item{display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px; cursor:pointer;}
+  .list-item .meta{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .empty{color:var(--text-dim); font-size:13px; padding:10px 0;}
+  .note{font-size:12px; color:var(--text-dim); margin-top:6px; line-height:1.5;}
+  .media-preview{max-width:100%; max-height:200px; border-radius:10px; margin-top:8px; display:none;}
+  .modal-bg{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:50; padding:16px;}
+  .modal-bg.active{display:flex;}
+  .modal{background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:420px; max-height:88vh; overflow:auto; border:1px solid var(--border);}
+  .scroll-list{max-height:60vh; overflow-y:auto;}
+</style>
+</head>
+<body>
+
+<!-- HOME SCREEN -->
+<div id="home" class="screen active">
+  <div class="logo-circle">⏰</div>
+  <h1>Events Reminder</h1>
+  <p class="credit">✨ Conceptualized &amp; Created by K Unnikrishnan ✨</p>
+  <p style="font-size:10px; color:var(--text-dim); margin:-10px 0 12px;">build v6</p>
+  <div class="home-buttons">
+    <button class="home-btn events" onclick="showScreen('eventsPage')">Events</button>
+    <button class="home-btn functions" onclick="showScreen('functionsPage')">Functions</button>
+  </div>
+  <div class="row" style="justify-content:center; max-width:420px; width:100%;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="openShowToday()">Today</button>
+    <button class="btn btn-ghost" style="flex:1;" onclick="openShowAll()">Show All</button>
+  </div>
+</div>
+
+<!-- EVENTS PAGE -->
+<div id="eventsPage" class="screen">
+  <div class="topbar"><button class="back-btn" onclick="showScreen('home')">← Home</button><h2>Events</h2></div>
+  <div class="panel-events">
+    <div class="card">
+      <div id="ev-editing-banner" style="display:none; margin-bottom:10px; font-weight:600; color:var(--events-accent);">Editing: <span id="ev-editing-name" class="tamil"></span></div>
+      <label>What / Where (e.g. Temple, Shop, Market, Hospital)</label>
+      <textarea id="ev-title" class="tamil wide-field" placeholder="Type here..."></textarea>
+      <label>Date</label>
+      <input type="date" id="ev-date">
+      <label>Time</label>
+      <input type="time" id="ev-time">
+
+      <label>Invitation Card / Image (optional)</label>
+      <input type="file" id="ev-image" accept="image/*">
+      <img id="ev-image-preview" class="media-preview">
+      <div id="ev-download-wrap"></div>
+
+      <label>Alarm Sound (optional — pick a file from your phone)</label>
+      <input type="file" id="ev-sound" accept="audio/*">
+      <div class="note" id="ev-sound-name"></div>
+
+      <label>Extra Alarms (optional — any date &amp; time)</label>
+      <div id="ev-custom-alarms-list"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addCustomAlarmRow('ev')">+ Add Alarm</button>
+
+      <div class="row">
+        <button class="btn btn-events" onclick="saveEvent()">Save</button>
+        <button class="btn btn-ghost" id="ev-cancel-btn" style="display:none;" onclick="cancelEventEdit()">Cancel Edit</button>
+        <button class="btn btn-danger" id="ev-delete-btn" style="display:none;" onclick="deleteEventConfirm()">Delete</button>
+        <button class="btn btn-ghost" onclick="clearEventForm()">Clear</button>
+      </div>
+      <p class="note">Reminder alarm rings at 8:00 AM the day before this date, and again 1 hour before the time above on the day itself. This record is auto-deleted at 23:49 on the date itself. (A real automatic SMS to your own phone needs the native Android app — this web version rings a loud alarm + on-screen notification instead.)</p>
+    </div>
+
+    <div id="ev-today-section">
+      <button class="btn btn-events" style="width:100%" onclick="showTodayEvents()">Show — Today's Events</button>
+      <div id="todayEventsBox"></div>
+    </div>
+
+
+    <div id="ev-list-section">
+      <h3 style="margin:18px 0 8px; font-size:15px;">All Upcoming Events</h3>
+      <div id="eventsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FUNCTIONS PAGE -->
+<div id="functionsPage" class="screen">
+  <div class="topbar"><button class="back-btn" onclick="showScreen('home')">← Home</button><h2>Functions</h2></div>
+  <div class="panel-functions">
+    <div class="card">
+      <div id="fn-editing-banner" style="display:none; margin-bottom:10px; font-weight:600; color:var(--functions-accent);">Editing: <span id="fn-editing-name" class="tamil"></span></div>
+      <label>Name</label>
+      <textarea id="fn-name" class="tamil wide-field" placeholder="Person / occasion name"></textarea>
+      <label>Type</label>
+      <select id="fn-type" onchange="toggleOtherType()">
+        <option value="Birthday">Birthday</option>
+        <option value="Anniversary">Wedding Anniversary</option>
+        <option value="Others">Others (type below)</option>
+      </select>
+      <div id="fn-other-wrap" style="display:none;">
+        <label>Occasion (e.g. Ear-piercing, Naming ceremony, House warming)</label>
+        <textarea id="fn-other-type" class="tamil wide-field" placeholder="Type occasion..."></textarea>
+      </div>
+      <label>Date</label>
+      <input type="date" id="fn-date">
+      <label>Time</label>
+      <input type="time" id="fn-time">
+      <div class="checkline"><input type="checkbox" id="fn-repeat-yearly" checked><label style="margin:0;">Repeat every year (uncheck for a one-time occasion, e.g. ear-piercing)</label></div>
+
+      <label>Phone Number</label>
+      <div class="row" style="margin-top:0;">
+        <input type="text" id="fn-phone" placeholder="e.g. 9XXXXXXXXX" style="flex:1;">
+        <button class="btn btn-ghost btn-sm" onclick="pickContact()">Pick from Contacts</button>
+      </div>
+
+      <label>Greeting Message</label>
+      <textarea id="fn-message" class="tamil" placeholder="Type your greeting message..."></textarea>
+
+      <label>Greeting Image / Video (as large as your device allows)</label>
+      <input type="file" id="fn-media" accept="image/*,video/*">
+      <img id="fn-image-preview" class="media-preview">
+      <video id="fn-video-preview" class="media-preview" controls></video>
+      <div id="fn-download-wrap"></div>
+
+      <label>Alarm Sound (optional — pick a file from your phone)</label>
+      <input type="file" id="fn-sound" accept="audio/*">
+      <div class="note" id="fn-sound-name"></div>
+
+      <div style="margin-top:12px; font-weight:600; font-size:13px;">Send via</div>
+      <div class="checkline"><input type="checkbox" id="fn-send-sms"><label style="margin:0;">SMS</label></div>
+      <div class="checkline"><input type="checkbox" id="fn-send-rcs"><label style="margin:0;">RCS (via your phone's Messages app share sheet)</label></div>
+      <div class="checkline"><input type="checkbox" id="fn-send-whatsapp" checked><label style="margin:0;">WhatsApp</label></div>
+
+      <div style="margin-top:12px; font-weight:600; font-size:13px;">Alarms</div>
+      <div class="checkline"><input type="checkbox" id="fn-alarm-2day" checked><label style="margin:0;">2 days before, 8:00 AM</label></div>
+      <div class="checkline"><input type="checkbox" id="fn-alarm-1day" checked><label style="margin:0;">1 day before, 8:00 PM</label></div>
+      <div class="checkline"><input type="checkbox" id="fn-alarm-dayof" checked><label style="margin:0;">On the day, 7:00 AM</label></div>
+      <div class="checkline"><input type="checkbox" id="fn-alarm-onehour" checked><label style="margin:0;">On the day, 1 hour before the Time above</label></div>
+
+      <label>Extra Alarms (optional — any date &amp; time)</label>
+      <div id="fn-custom-alarms-list"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addCustomAlarmRow('fn')">+ Add Alarm</button>
+
+      <div class="row">
+        <button class="btn btn-functions" onclick="saveFunction()">Save</button>
+        <button class="btn btn-ghost" id="fn-cancel-btn" style="display:none;" onclick="cancelFunctionEdit()">Cancel Edit</button>
+        <button class="btn btn-danger" id="fn-delete-btn" style="display:none;" onclick="deleteFunctionConfirm()">Delete</button>
+        <button class="btn btn-ghost" onclick="clearFunctionForm()">Clear</button>
+      </div>
+      <p class="note">At alarm time, if RCS or WhatsApp is checked, your phone's Share screen opens with the image/video and message ready — pick the app and contact, then tap Send. Fully silent auto-send isn't possible for RCS/WhatsApp from a personal number; SMS (text only) can send fully automatically in the native Android app version — this web version rings an alarm + notification instead. Today's occurrence clears at 23:49; if "Repeat every year" is off, the whole record is removed instead.</p>
+    </div>
+    <div id="fn-list-section">
+      <h3 style="margin:18px 0 8px; font-size:15px;">Saved Functions</h3>
+      <div id="functionsList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="showAllModalBg"><div class="modal">
+  <div class="topbar"><h2 style="margin:0;" id="showAllTitle">All Events &amp; Functions</h2></div>
+  <div class="scroll-list" id="showAllList"></div>
+  <div class="row"><button class="btn btn-ghost" onclick="closeShowAll()">Close</button></div>
+</div></div>
+
+<audio id="alarmSound" src="https://cdn.freesound.org/previews/337/337049_5121236-lq.mp3" preload="auto"></audio>
+
+<script>
+/* ---------- IndexedDB helper (for image/video/audio files) ---------- */
+/* Lazy + wrapped in try/catch so that if IndexedDB is unavailable (some browsers restrict it
+   when a file is opened directly from disk), saving text data is never blocked by it. */
+let _dbPromise = null;
+function getDb(){
+  if(_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject)=>{
+    try{
+      if(!window.indexedDB){ reject(new Error('IndexedDB not available')); return; }
+      const req = indexedDB.open('EventReminderDB', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('files');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    }catch(err){ reject(err); }
+  });
+  return _dbPromise;
+}
+async function idbPut(id, blob){
+  try{ const db = await getDb(); return await new Promise((res)=>{ const tx=db.transaction('files','readwrite'); tx.objectStore('files').put(blob, id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); }); }
+  catch(err){ console.warn('Could not store file locally:', err); return false; }
+}
+async function idbGet(id){
+  try{ const db = await getDb(); return await new Promise((res)=>{ const tx=db.transaction('files','readonly'); const r=tx.objectStore('files').get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
+  catch(err){ return null; }
+}
+async function idbDelete(id){
+  try{ const db = await getDb(); return await new Promise((res)=>{ const tx=db.transaction('files','readwrite'); tx.objectStore('files').delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>res(); }); }
+  catch(err){ return; }
+}
+
+const STORE_EVENTS = 'er_events';
+const STORE_FUNCTIONS = 'er_functions';
+let editingEventId = null;
+let editingFunctionId = null;
+let pendingEvImageBlob=null, pendingEvSoundBlob=null, pendingEvSoundName='';
+let pendingFnMediaBlob=null, pendingFnMediaType=null, pendingFnSoundBlob=null, pendingFnSoundName='';
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>{ s.classList.remove('active'); s.style.display='none'; });
+  const target=document.getElementById(id);
+  target.classList.add('active'); target.style.display='block';
+  window.scrollTo(0,0);
+  if(id==='eventsPage') renderEvents();
+  if(id==='functionsPage') renderFunctions();
+}
+function loadData(key){ return JSON.parse(localStorage.getItem(key) || '[]'); }
+function saveData(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+function uid(){ return 'id_' + Date.now() + '_' + Math.floor(Math.random()*1000); }
+function fmtDMY(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Custom (extra) alarms — repeatable date+time rows, shared by Events & Functions ---------- */
+function addCustomAlarmRow(prefix, presetDate, presetTime){
+  const container = document.getElementById(prefix+'-custom-alarms-list');
+  const rowId = 'ca_'+Date.now()+'_'+Math.floor(Math.random()*1000);
+  const div = document.createElement('div');
+  div.className='row ca-row'; div.id=rowId; div.style.marginTop='6px';
+  div.innerHTML = `<input type="date" class="ca-date" value="${presetDate||''}" style="flex:1;">
+    <input type="time" class="ca-time" value="${presetTime||''}" style="flex:1;">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('${rowId}').remove()">✕</button>`;
+  container.appendChild(div);
+}
+function clearCustomAlarmRows(prefix){ document.getElementById(prefix+'-custom-alarms-list').innerHTML=''; }
+function loadCustomAlarmsIntoForm(prefix, arr){ clearCustomAlarmRows(prefix); (arr||[]).forEach(a=>addCustomAlarmRow(prefix, a.date, a.time)); }
+function collectCustomAlarms(prefix){
+  const rows = document.querySelectorAll('#'+prefix+'-custom-alarms-list .ca-row');
+  const arr=[];
+  rows.forEach(r=>{ const d=r.querySelector('.ca-date').value; const t=r.querySelector('.ca-time').value; if(d&&t) arr.push({date:d,time:t}); });
+  return arr;
+}
+
+/* ---------- EVENTS ---------- */
+document.getElementById('ev-image').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  pendingEvImageBlob=f;
+  const url=URL.createObjectURL(f);
+  const img=document.getElementById('ev-image-preview'); img.src=url; img.style.display='block';
+});
+document.getElementById('ev-sound').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  pendingEvSoundBlob=f; pendingEvSoundName=f.name;
+  document.getElementById('ev-sound-name').textContent='Selected: '+f.name;
+});
+function clearEventForm(){
+  editingEventId=null; pendingEvImageBlob=null; pendingEvSoundBlob=null; pendingEvSoundName='';
+  document.getElementById('ev-title').value='';
+  document.getElementById('ev-date').value='';
+  document.getElementById('ev-time').value='';
+  document.getElementById('ev-image').value='';
+  document.getElementById('ev-image-preview').style.display='none';
+  document.getElementById('ev-download-wrap').innerHTML='';
+  document.getElementById('ev-sound').value='';
+  document.getElementById('ev-sound-name').textContent='';
+  clearCustomAlarmRows('ev');
+  document.getElementById('ev-editing-banner').style.display='none';
+  document.getElementById('ev-cancel-btn').style.display='none';
+  document.getElementById('ev-delete-btn').style.display='none';
+  document.getElementById('ev-today-section').style.display='';
+  document.getElementById('ev-list-section').style.display='';
+}
+function cancelEventEdit(){ clearEventForm(); }
+async function saveEvent(){
+  try{
+    const title=document.getElementById('ev-title').value.trim();
+    const date=document.getElementById('ev-date').value;
+    const time=document.getElementById('ev-time').value;
+    if(!title||!date||!time){ alert('Please fill in what/where, date and time.'); return; }
+    let events=loadData(STORE_EVENTS);
+    let imageId=null, soundId=null, soundName=pendingEvSoundName;
+    let remindedDayBefore=false, remindedOneHour=false;
+    if(editingEventId){
+      const existing=events.find(e=>e.id===editingEventId);
+      if(existing){
+        imageId = existing.imageId||null; soundId=existing.soundId||null; soundName = pendingEvSoundName || existing.soundName || '';
+        // if date/time changed, allow the alarms to fire again
+        remindedDayBefore = (existing.date===date && existing.time===time) ? !!existing.remindedDayBefore : false;
+        remindedOneHour = (existing.date===date && existing.time===time) ? !!existing.remindedOneHour : false;
+      }
+    }
+    const customAlarms = collectCustomAlarms('ev');
+    let mediaWarning=false;
+    if(pendingEvImageBlob){ const newId = uid()+'_img'; const ok = await idbPut(newId, pendingEvImageBlob); if(ok) imageId=newId; else mediaWarning=true; }
+    if(pendingEvSoundBlob){ const newId = uid()+'_snd'; const ok = await idbPut(newId, pendingEvSoundBlob); if(ok) soundId=newId; else mediaWarning=true; }
+    if(editingEventId){
+      events = events.map(e => e.id===editingEventId ? {...e, title, date, time, imageId, soundId, soundName, customAlarms, remindedDayBefore, remindedOneHour} : e);
+    } else {
+      events.push({id:uid(), title, date, time, remindedDayBefore:false, remindedOneHour:false, imageId, soundId, soundName, customAlarms, firedCustom:[]});
+    }
+    saveData(STORE_EVENTS, events);
+    clearEventForm(); renderEvents(); showTodayEvents();
+    if(mediaWarning) alert('Saved — but the image/sound file could not be stored on this device (storage restricted here). Everything else was saved.');
+  }catch(err){
+    console.error(err);
+    alert('Something went wrong while saving: ' + err.message + '\nPlease try again.');
+  }
+}
+function renderEvents(){
+  const events=loadData(STORE_EVENTS).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const box=document.getElementById('eventsList');
+  if(events.length===0){ box.innerHTML='<div class="empty">No events saved yet.</div>'; return; }
+  box.innerHTML=events.map(e=>`
+    <div class="list-item" onclick="openEditEvent('${e.id}')">
+      <div><div class="tamil">${escapeHtml(e.title)}</div><div class="meta">${fmtDMY(e.date)} · ${e.time}</div></div>
+      <span>›</span>
+    </div>`).join('');
+}
+function showTodayEvents(){
+  const today=todayStr();
+  const events=loadData(STORE_EVENTS).filter(e=>e.date===today);
+  const box=document.getElementById('todayEventsBox');
+  if(events.length===0){ box.innerHTML='<div class="today-box empty">No events for today.</div>'; return; }
+  box.innerHTML='<div class="today-box">'+events.map(e=>`
+    <div class="list-item" onclick="openEditEvent('${e.id}')">
+      <div><div class="tamil">${escapeHtml(e.title)}</div><div class="meta">${e.time}</div></div><span>›</span>
+    </div>`).join('')+'</div>';
+}
+async function openEditEvent(id){
+  const events=loadData(STORE_EVENTS); const e=events.find(x=>x.id===id); if(!e) return;
+  editingEventId=id; pendingEvImageBlob=null; pendingEvSoundBlob=null; pendingEvSoundName='';
+  document.getElementById('ev-title').value=e.title;
+  document.getElementById('ev-date').value=e.date;
+  document.getElementById('ev-time').value=e.time;
+  document.getElementById('ev-sound-name').textContent = e.soundName ? ('Selected: '+e.soundName) : '';
+  document.getElementById('ev-image-preview').style.display='none';
+  loadCustomAlarmsIntoForm('ev', e.customAlarms||[]);
+  let downloadHtml='';
+  if(e.imageId){
+    const blob=await idbGet(e.imageId);
+    if(blob){ const url=URL.createObjectURL(blob); document.getElementById('ev-image-preview').src=url; document.getElementById('ev-image-preview').style.display='block';
+      downloadHtml = `<button class="btn btn-events btn-sm" style="margin-top:8px;" onclick="downloadEventImage('${e.id}')">Download Invitation Image</button>`; }
+  }
+  document.getElementById('ev-download-wrap').innerHTML=downloadHtml;
+  document.getElementById('ev-editing-banner').style.display='block';
+  document.getElementById('ev-editing-name').textContent=e.title;
+  document.getElementById('ev-cancel-btn').style.display='inline-block';
+  document.getElementById('ev-delete-btn').style.display='inline-block';
+  document.getElementById('ev-today-section').style.display='none';
+  document.getElementById('ev-list-section').style.display='none';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+async function downloadEventImage(id){
+  const events=loadData(STORE_EVENTS); const e=events.find(x=>x.id===id); if(!e||!e.imageId) return;
+  const blob=await idbGet(e.imageId); if(!blob) return;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='invitation-'+id+'.jpg'; a.click();
+}
+function deleteEventConfirm(){ if(editingEventId && confirm('Delete this event?')) deleteEvent(editingEventId); }
+async function deleteEvent(id){
+  const events=loadData(STORE_EVENTS); const e=events.find(x=>x.id===id);
+  if(e && e.imageId) await idbDelete(e.imageId);
+  if(e && e.soundId) await idbDelete(e.soundId);
+  saveData(STORE_EVENTS, events.filter(x=>x.id!==id));
+  clearEventForm(); renderEvents(); showTodayEvents();
+}
+
+/* ---------- FUNCTIONS ---------- */
+function toggleOtherType(){ document.getElementById('fn-other-wrap').style.display = document.getElementById('fn-type').value==='Others' ? 'block':'none'; }
+document.getElementById('fn-media').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  pendingFnMediaBlob=f; pendingFnMediaType = f.type.startsWith('video') ? 'video' : 'image';
+  const url=URL.createObjectURL(f);
+  document.getElementById('fn-image-preview').style.display='none';
+  document.getElementById('fn-video-preview').style.display='none';
+  if(pendingFnMediaType==='video'){ const v=document.getElementById('fn-video-preview'); v.src=url; v.style.display='block'; }
+  else { const img=document.getElementById('fn-image-preview'); img.src=url; img.style.display='block'; }
+});
+document.getElementById('fn-sound').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  pendingFnSoundBlob=f; pendingFnSoundName=f.name;
+  document.getElementById('fn-sound-name').textContent='Selected: '+f.name;
+});
+async function pickContact(){
+  if('contacts' in navigator && 'ContactsManager' in window){
+    try{
+      const contacts = await navigator.contacts.select(['tel'], {multiple:false});
+      if(contacts.length && contacts[0].tel.length){ document.getElementById('fn-phone').value = contacts[0].tel[0]; }
+    }catch(err){ alert('Could not open contacts picker: '+err.message); }
+  } else {
+    alert('Your browser doesn\'t support picking from Contacts directly. Please type the number, or in the Android app version this will open your Contacts list.');
+  }
+}
+function clearFunctionForm(){
+  editingFunctionId=null; pendingFnMediaBlob=null; pendingFnMediaType=null; pendingFnSoundBlob=null; pendingFnSoundName='';
+  ['fn-name','fn-other-type','fn-date','fn-time','fn-phone','fn-message'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fn-type').value='Birthday'; toggleOtherType();
+  document.getElementById('fn-repeat-yearly').checked=true;
+  document.getElementById('fn-media').value='';
+  document.getElementById('fn-image-preview').style.display='none';
+  document.getElementById('fn-video-preview').style.display='none';
+  document.getElementById('fn-download-wrap').innerHTML='';
+  document.getElementById('fn-sound').value=''; document.getElementById('fn-sound-name').textContent='';
+  document.getElementById('fn-send-sms').checked=false;
+  document.getElementById('fn-send-rcs').checked=false;
+  document.getElementById('fn-send-whatsapp').checked=true;
+  document.getElementById('fn-alarm-2day').checked=true;
+  document.getElementById('fn-alarm-1day').checked=true;
+  document.getElementById('fn-alarm-dayof').checked=true;
+  document.getElementById('fn-alarm-onehour').checked=true;
+  clearCustomAlarmRows('fn');
+  document.getElementById('fn-editing-banner').style.display='none';
+  document.getElementById('fn-cancel-btn').style.display='none';
+  document.getElementById('fn-delete-btn').style.display='none';
+  document.getElementById('fn-list-section').style.display='';
+}
+function cancelFunctionEdit(){ clearFunctionForm(); }
+async function saveFunction(){
+  try{
+    const type=document.getElementById('fn-type').value;
+    const otherType=document.getElementById('fn-other-type').value.trim();
+    const name=document.getElementById('fn-name').value.trim();
+    const date=document.getElementById('fn-date').value;
+    const time=document.getElementById('fn-time').value;
+    if(!name||!date){ alert('Please fill in the name and date.'); return; }
+    let list=loadData(STORE_FUNCTIONS);
+    let mediaId=null, mediaType=null, soundId=null, soundName=pendingFnSoundName;
+    let remindedFlags={};
+    if(editingFunctionId){
+      const existing=list.find(f=>f.id===editingFunctionId);
+      if(existing){
+        mediaId=existing.mediaId||null; mediaType=existing.mediaType||null;
+        soundId=existing.soundId||null; soundName=pendingFnSoundName||existing.soundName||'';
+        remindedFlags = (existing.date===date && existing.time===time) ? (existing.remindedFlags||{}) : {};
+      }
+    }
+    const customAlarms = collectCustomAlarms('fn');
+    let mediaWarning=false;
+    if(pendingFnMediaBlob){ const newId=uid()+'_media'; const ok=await idbPut(newId, pendingFnMediaBlob); if(ok){ mediaId=newId; mediaType=pendingFnMediaType; } else mediaWarning=true; }
+    if(pendingFnSoundBlob){ const newId=uid()+'_snd'; const ok=await idbPut(newId, pendingFnSoundBlob); if(ok) soundId=newId; else mediaWarning=true; }
+    const data = {
+      name, type: type==='Others' ? (otherType||'Others') : type, date, time,
+      phone: document.getElementById('fn-phone').value.trim(),
+      message: document.getElementById('fn-message').value,
+      mediaId, mediaType, soundId, soundName, customAlarms,
+      repeatYearly: document.getElementById('fn-repeat-yearly').checked,
+      sendSms: document.getElementById('fn-send-sms').checked,
+      sendRcs: document.getElementById('fn-send-rcs').checked,
+      sendWhatsapp: document.getElementById('fn-send-whatsapp').checked,
+      alarm2day: document.getElementById('fn-alarm-2day').checked,
+      alarm1day: document.getElementById('fn-alarm-1day').checked,
+      alarmDayOf: document.getElementById('fn-alarm-dayof').checked,
+      alarmOneHour: document.getElementById('fn-alarm-onehour').checked,
+      remindedFlags
+    };
+    if(editingFunctionId){ list = list.map(f => f.id===editingFunctionId ? {...f, ...data} : f); }
+    else { list.push({id:uid(), ...data}); }
+    saveData(STORE_FUNCTIONS, list);
+    clearFunctionForm(); renderFunctions();
+    if(mediaWarning) alert('Saved — but the image/video/sound file could not be stored on this device (storage restricted here). Everything else was saved.');
+  }catch(err){
+    console.error(err);
+    alert('Something went wrong while saving: ' + err.message + '\nPlease try again.');
+  }
+}
+function renderFunctions(){
+  const list=loadData(STORE_FUNCTIONS).sort((a,b)=>a.date.slice(5).localeCompare(b.date.slice(5)));
+  const box=document.getElementById('functionsList');
+  if(list.length===0){ box.innerHTML='<div class="empty">No functions saved yet.</div>'; return; }
+  box.innerHTML=list.map(f=>`
+    <div class="list-item" onclick="openEditFunction('${f.id}')">
+      <div><div class="tamil">${escapeHtml(f.name)} — ${escapeHtml(f.type)}</div>
+      <div class="meta">${fmtDMY(f.date)}${f.repeatYearly ? ' (every year)' : ' (one-time)'}</div></div>
+      <span>›</span>
+    </div>`).join('');
+}
+async function openEditFunction(id){
+  const list=loadData(STORE_FUNCTIONS); const f=list.find(x=>x.id===id); if(!f) return;
+  editingFunctionId=id; pendingFnMediaBlob=null; pendingFnMediaType=null; pendingFnSoundBlob=null; pendingFnSoundName='';
+  document.getElementById('fn-name').value=f.name;
+  document.getElementById('fn-type').value=['Birthday','Anniversary'].includes(f.type)?f.type:'Others';
+  document.getElementById('fn-other-type').value=['Birthday','Anniversary'].includes(f.type)?'':f.type;
+  toggleOtherType();
+  document.getElementById('fn-date').value=f.date;
+  document.getElementById('fn-time').value=f.time||'';
+  document.getElementById('fn-repeat-yearly').checked = f.repeatYearly!==false;
+  document.getElementById('fn-phone').value=f.phone||'';
+  document.getElementById('fn-message').value=f.message||'';
+  document.getElementById('fn-sound-name').textContent=f.soundName?('Selected: '+f.soundName):'';
+  document.getElementById('fn-send-sms').checked=!!f.sendSms;
+  document.getElementById('fn-send-rcs').checked=!!f.sendRcs;
+  document.getElementById('fn-send-whatsapp').checked=!!f.sendWhatsapp;
+  document.getElementById('fn-alarm-2day').checked=!!f.alarm2day;
+  document.getElementById('fn-alarm-1day').checked=!!f.alarm1day;
+  document.getElementById('fn-alarm-dayof').checked=!!f.alarmDayOf;
+  document.getElementById('fn-alarm-onehour').checked = f.alarmOneHour!==false;
+  loadCustomAlarmsIntoForm('fn', f.customAlarms||[]);
+  document.getElementById('fn-image-preview').style.display='none';
+  document.getElementById('fn-video-preview').style.display='none';
+  let downloadHtml='';
+  if(f.mediaId){
+    const blob=await idbGet(f.mediaId);
+    if(blob){
+      const url=URL.createObjectURL(blob);
+      if(f.mediaType==='video'){ const v=document.getElementById('fn-video-preview'); v.src=url; v.style.display='block'; }
+      else { const img=document.getElementById('fn-image-preview'); img.src=url; img.style.display='block'; }
+      downloadHtml = `<button class="btn btn-functions btn-sm" style="margin-top:8px;" onclick="downloadFunctionMedia('${f.id}')">Download Greeting Media</button>`;
+    }
+  }
+  document.getElementById('fn-download-wrap').innerHTML=downloadHtml;
+  document.getElementById('fn-editing-banner').style.display='block';
+  document.getElementById('fn-editing-name').textContent=f.name;
+  document.getElementById('fn-cancel-btn').style.display='inline-block';
+  document.getElementById('fn-delete-btn').style.display='inline-block';
+  document.getElementById('fn-list-section').style.display='none';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+async function downloadFunctionMedia(id){
+  const list=loadData(STORE_FUNCTIONS); const f=list.find(x=>x.id===id); if(!f||!f.mediaId) return;
+  const blob=await idbGet(f.mediaId); if(!blob) return;
+  const ext = f.mediaType==='video' ? 'mp4' : 'jpg';
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='greeting-'+id+'.'+ext; a.click();
+}
+function deleteFunctionConfirm(){ if(editingFunctionId && confirm('Delete this function?')) deleteFunction(editingFunctionId); }
+async function deleteFunction(id){
+  const list=loadData(STORE_FUNCTIONS); const f=list.find(x=>x.id===id);
+  if(f && f.mediaId) await idbDelete(f.mediaId);
+  if(f && f.soundId) await idbDelete(f.soundId);
+  saveData(STORE_FUNCTIONS, list.filter(x=>x.id!==id));
+  clearFunctionForm(); renderFunctions();
+}
+
+/* ---------- SHARE (RCS / WhatsApp via native share sheet) ---------- */
+async function shareGreeting(f){
+  const greetText = f.message || `Wishing ${f.name} well on their ${f.type}!`;
+  let files=[];
+  if(f.mediaId){ const blob=await idbGet(f.mediaId); if(blob){ const ext=f.mediaType==='video'?'mp4':'jpg'; files=[new File([blob], 'greeting.'+ext, {type:blob.type})]; } }
+  if(navigator.canShare && files.length && navigator.canShare({files})){
+    try{ await navigator.share({text:greetText, files}); return; }catch(e){ /* user cancelled or unsupported, fall through */ }
+  }
+  if(navigator.share){
+    try{ await navigator.share({text:greetText}); return; }catch(e){}
+  }
+  if(f.sendWhatsapp) sendWhatsappText(f.phone, greetText);
+}
+function sendWhatsappText(phone, message){
+  if(!phone) return;
+  const clean=phone.replace(/\D/g,'');
+  window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
+/* ---------- ALARM ENGINE ---------- */
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+/* Browsers block audio.play() unless it follows a real user tap. Prime (unlock) the
+   single shared <audio> element on the very first tap anywhere in the app, so later
+   alarms triggered by the background timer are allowed to play. */
+let _audioUnlocked=false;
+document.addEventListener('click', function(){
+  if(_audioUnlocked) return;
+  const el=document.getElementById('alarmSound');
+  const prevSrc=el.src;
+  el.play().then(()=>{ el.pause(); el.currentTime=0; _audioUnlocked=true; }).catch(()=>{});
+});
+const RING_DURATION_MS = 18000; // ring for about as long as a normal phone ringtone, not the whole file
+let _ringTimer=null;
+async function ringAlarm(label, soundId){
+  const el=document.getElementById('alarmSound');
+  let src='https://cdn.freesound.org/previews/337/337049_5121236-lq.mp3';
+  if(soundId){ const blob=await idbGet(soundId); if(blob) src=URL.createObjectURL(blob); }
+  if(_ringTimer) clearTimeout(_ringTimer);
+  el.pause(); el.src=src; el.currentTime=0; el.loop=true;
+  el.play().catch(()=>{});
+  _ringTimer=setTimeout(()=>{ el.pause(); el.currentTime=0; el.loop=false; }, RING_DURATION_MS);
+  if(Notification.permission==='granted'){ new Notification('Event Reminder', {body:label}); }
+  else { alert(label); }
+}
+function sameMinute(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate() && a.getHours()===b.getHours() && a.getMinutes()===b.getMinutes(); }
+async function checkEventAlarms(){
+  const now=new Date(); let events=loadData(STORE_EVENTS); let changed=false;
+  for(const e of events){
+    const eventDate=new Date(e.date+'T00:00:00');
+    const diffDays=daysBetween(new Date(now.toDateString()), eventDate);
+    if(diffDays===1 && !e.remindedDayBefore && now.getHours()===8 && now.getMinutes()===0){
+      await ringAlarm(`Tomorrow: ${e.title} at ${e.time}`, e.soundId);
+      e.remindedDayBefore=true; changed=true;
+    }
+    if(e.time && !e.remindedOneHour){
+      const oneHourBefore = new Date(e.date+'T'+e.time+':00'); oneHourBefore.setHours(oneHourBefore.getHours()-1);
+      if(sameMinute(now, oneHourBefore)){
+        await ringAlarm(`In 1 hour: ${e.title} at ${e.time} (SMS reminder needs the native Android app)`, e.soundId);
+        e.remindedOneHour=true; changed=true;
+      }
+    }
+    e.firedCustom = e.firedCustom||[];
+    (e.customAlarms||[]).forEach((ca,idx)=>{
+      const key=ca.date+'_'+ca.time;
+      if(!e.firedCustom.includes(key)){
+        const dt=new Date(ca.date+'T'+ca.time+':00');
+        if(sameMinute(now, dt)){ ringAlarm(`Reminder: ${e.title}`, e.soundId); e.firedCustom.push(key); changed=true; }
+      }
+    });
+  }
+  const today=todayStr(); const todayMidnight=new Date(now.toDateString()); const before=events.length;
+  const toDelete = events.filter(e=>{
+    const eventDateOnly=new Date(e.date+'T00:00:00');
+    return eventDateOnly < todayMidnight || (e.date===today && now.getHours()===23 && now.getMinutes()>=49);
+  });
+  for(const e of toDelete){ if(e.imageId) await idbDelete(e.imageId); if(e.soundId) await idbDelete(e.soundId); }
+  events = events.filter(e=>!toDelete.includes(e));
+  if(events.length!==before) changed=true;
+  if(changed) saveData(STORE_EVENTS, events);
+}
+async function checkFunctionAlarms(){
+  const now=new Date(); const nowKey=todayStr();
+  let list=loadData(STORE_FUNCTIONS); let changed=false; let toRemove=[];
+  for(const f of list){
+    const baseDate=new Date(f.date+'T00:00:00');
+    const thisYear = new Date(now.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+    const diffDays=daysBetween(new Date(now.toDateString()), thisYear);
+    f.remindedFlags=f.remindedFlags||{};
+    const fireOnce=async(key,cond)=>{
+      if(cond && f.remindedFlags[key+'_'+nowKey]!==true){
+        await ringAlarm(`${f.type} reminder: ${f.name}`, f.soundId);
+        if(f.sendRcs || f.sendWhatsapp) await shareGreeting(f);
+        f.remindedFlags[key+'_'+nowKey]=true; changed=true;
+      }
+    };
+    if(f.alarm2day) await fireOnce('2day', diffDays===2 && now.getHours()===8 && now.getMinutes()===0);
+    if(f.alarm1day) await fireOnce('1day', diffDays===1 && now.getHours()===20 && now.getMinutes()===0);
+    if(f.alarmDayOf) await fireOnce('dayof', diffDays===0 && now.getHours()===7 && now.getMinutes()===0);
+    if(f.alarmOneHour && f.time && diffDays===0){
+      const target=new Date(thisYear); const [h,m]=f.time.split(':').map(Number); target.setHours(h,m,0,0); target.setHours(target.getHours()-1);
+      if(sameMinute(now, target)) await fireOnce('onehour', true);
+    }
+    f.firedCustom = f.firedCustom||[];
+    for(const ca of (f.customAlarms||[])){
+      const key='ca_'+ca.date+'_'+ca.time;
+      if(!f.firedCustom.includes(key)){
+        const dt=new Date(ca.date+'T'+ca.time+':00');
+        if(sameMinute(now, dt)){
+          await ringAlarm(`Reminder: ${f.name}`, f.soundId);
+          if(f.sendRcs || f.sendWhatsapp) await shareGreeting(f);
+          f.firedCustom.push(key); changed=true;
+        }
+      }
+    }
+    if(f.repeatYearly===false && diffDays<0){
+      toRemove.push(f.id); changed=true;
+    } else if(diffDays===0 && now.getHours()===23 && now.getMinutes()>=49){
+      if(f.repeatYearly===false){ toRemove.push(f.id); }
+      else { Object.keys(f.remindedFlags).forEach(k=>{ if(k.endsWith('_'+nowKey)) delete f.remindedFlags[k]; }); }
+      changed=true;
+    }
+  }
+  if(toRemove.length){
+    for(const id of toRemove){ const f=list.find(x=>x.id===id); if(f&&f.mediaId) await idbDelete(f.mediaId); if(f&&f.soundId) await idbDelete(f.soundId); }
+    list = list.filter(f=>!toRemove.includes(f.id));
+  }
+  if(changed) saveData(STORE_FUNCTIONS, list);
+}
+
+/* ---------- HOME: Today / Show All (tap an item to jump to its edit page) ---------- */
+function collectAll(){
+  const events=loadData(STORE_EVENTS).map(e=>({id:e.id, kind:'Event', label:e.title, date:e.date, time:e.time}));
+  const fns=loadData(STORE_FUNCTIONS).map(f=>({id:f.id, kind:'Function', label:f.name+' — '+f.type, date:f.date, time:''}));
+  return [...events,...fns];
+}
+function renderListModal(title, items){
+  document.getElementById('showAllTitle').textContent=title;
+  const box=document.getElementById('showAllList');
+  if(items.length===0){ box.innerHTML='<div class="empty">Nothing here.</div>'; }
+  else {
+    box.innerHTML=items.map(x=>`
+      <div class="list-item" onclick="goToRecord('${x.kind}','${x.id}')">
+        <div><div class="tamil">${escapeHtml(x.label)}</div>
+        <div class="meta">${fmtDMY(x.date)}${x.time?(' · '+x.time):''} · ${x.kind}</div></div><span>›</span>
+      </div>`).join('');
+  }
+  document.getElementById('showAllModalBg').classList.add('active');
+}
+function openShowAll(){
+  const all=collectAll().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  renderListModal('All Events & Functions', all);
+}
+function openShowToday(){
+  const now=new Date();
+  const all=collectAll().filter(x=>{
+    const base=new Date(x.date+'T00:00:00');
+    return base.getMonth()===now.getMonth() && base.getDate()===now.getDate();
+  }).sort((a,b)=>a.time.localeCompare(b.time));
+  renderListModal("Today's Events & Functions", all);
+}
+function goToRecord(kind, id){
+  closeShowAll();
+  if(kind==='Event'){ showScreen('eventsPage'); setTimeout(()=>openEditEvent(id), 60); }
+  else { showScreen('functionsPage'); setTimeout(()=>openEditFunction(id), 60); }
+}
+function closeShowAll(){ document.getElementById('showAllModalBg').classList.remove('active'); }
+
+if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); }
+setInterval(()=>{ checkEventAlarms(); checkFunctionAlarms(); }, 30000);
+setInterval(()=>{ checkEventAlarms(); checkFunctionAlarms(); }, 30000);
+(async()=>{
+  await checkEventAlarms(); await checkFunctionAlarms();
+  renderEvents(); renderFunctions(); toggleOtherType();
+})();
+</script>
+</body>
+</html>
